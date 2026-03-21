@@ -477,7 +477,8 @@ function isPaymentPage() {
     'pay.openai.com',
     'checkout.stripe.com',
     'pay.krea.ai',
-    'buy.stripe.com'
+    'buy.stripe.com',
+    'localhost'
   ];
 
   for (const domain of allowedDomains) {
@@ -614,7 +615,8 @@ function injectScript() {
 }
 
 function checkAndInject() {
-  if (isPaymentPage() || hasStripeElements()) {
+  // Force injection for testing on localhost
+  if (window.location.hostname === 'localhost' || isPaymentPage() || hasStripeElements()) {
     injectScript();
   }
 }
