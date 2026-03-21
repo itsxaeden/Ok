@@ -321,39 +321,5 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })();
     return true;
   }
-  if (message.type === "BLOCK_3DS_NAVIGATION") {
-    try {
-      if (sender && sender.tab && sender.tab.id) {
-        chrome.storage.local.set({ xorex_3ds_blocked_tab: sender.tab.id });
-      }
-    } catch (e) {}
-    return false;
-  }
   return false;
-});
-
-const threeDSUrlPatterns = [
-  "3ds", "three-ds", "3dsecure", "3d-secure", "threedsmethod",
-  "authenticate", "safekey", "securecode", "cardinal",
-  "centinelapi", "/acs/", "stepup", "challenge"
-];
-
-function is3DSUrl(url) {
-  if (!url) return false;
-  const lower = url.toLowerCase();
-  for (const pattern of threeDSUrlPatterns) {
-    if (lower.includes(pattern)) return true;
-  }
-  return false;
-}
-
-chrome.webNavigation.onBeforeNavigate.addListener((details) => {
-  if (details.frameId > 0 && is3DSUrl(details.url)) {
-    try {
-      chrome.scripting.executeScript({
-        target: { tabId: details.tabId, frameIds: [details.frameId] },
-        func: () => { window.stop(); }
-      }).catch(() => {});
-    } catch (e) {}
-  }
 });

