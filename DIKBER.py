@@ -553,15 +553,17 @@ async def check_card_random_site(card, sites, user_id=None):
                 
                 gateway = response_json.get('Gate', 'Shopify')
                 
-                # Check for proxy errors and remove dead proxy
+                # Check for proxy errors - verify proxy is actually dead before removing
                 if proxy_data and user_id and ('proxy' in api_response.lower() or 'connection' in api_response.lower() or 'timeout' in api_response.lower()):
-                    await remove_dead_proxy(user_id, proxy_data.get('proxy_url'))
-                    return {
-                        "Response": "⚠️ Proxy is dead and has been removed! Please add a new proxy using /addpxy",
-                        "Price": "-",
-                        "Gateway": "-",
-                        "Status": "Proxy Dead"
-                    }, site_index
+                    proxy_alive, _ = await test_proxy(proxy_data.get('proxy_url'))
+                    if not proxy_alive:
+                        await remove_dead_proxy(user_id, proxy_data.get('proxy_url'))
+                        return {
+                            "Response": "⚠️ Proxy is dead and has been removed! Please add a new proxy using /addpxy",
+                            "Price": "-",
+                            "Gateway": "-",
+                            "Status": "Proxy Dead"
+                        }, site_index
                 
                 # Check for charged status
                 if "Order completed" in api_response or "💎" in api_response:
@@ -631,15 +633,17 @@ async def check_card_specific_site(card, site, user_id=None):
                 
                 gateway = response_json.get('Gate', 'Shopify')
                 
-                # Check for proxy errors and remove dead proxy
+                # Check for proxy errors - verify proxy is actually dead before removing
                 if proxy_data and user_id and ('proxy' in api_response.lower() or 'connection' in api_response.lower() or 'timeout' in api_response.lower()):
-                    await remove_dead_proxy(user_id, proxy_data.get('proxy_url'))
-                    return {
-                        "Response": "⚠️ Proxy is dead and has been removed! Please add a new proxy using /addpxy",
-                        "Price": "-",
-                        "Gateway": "-",
-                        "Status": "Proxy Dead"
-                    }
+                    proxy_alive, _ = await test_proxy(proxy_data.get('proxy_url'))
+                    if not proxy_alive:
+                        await remove_dead_proxy(user_id, proxy_data.get('proxy_url'))
+                        return {
+                            "Response": "⚠️ Proxy is dead and has been removed! Please add a new proxy using /addpxy",
+                            "Price": "-",
+                            "Gateway": "-",
+                            "Status": "Proxy Dead"
+                        }
                 
                 # Check for charged status
                 if "Order completed" in api_response or "💎" in api_response:
@@ -966,10 +970,12 @@ async def test_single_site(site, test_card="4031630422575208|01|2030|280", user_
                 if price != '-':
                     price = f"${price}"
                 
-                # Check for proxy errors and remove dead proxy
+                # Check for proxy errors - verify proxy is actually dead before removing
                 if proxy_data and user_id and ('proxy' in response_msg.lower() or 'connection' in response_msg.lower() or 'timeout' in response_msg.lower()):
-                    await remove_dead_proxy(user_id, proxy_data.get('proxy_url'))
-                    return {"status": "proxy_dead", "response": "⚠️ Proxy is dead and has been removed! Please add a new proxy using /addpxy", "site": site, "price": "-"}
+                    proxy_alive, _ = await test_proxy(proxy_data.get('proxy_url'))
+                    if not proxy_alive:
+                        await remove_dead_proxy(user_id, proxy_data.get('proxy_url'))
+                        return {"status": "proxy_dead", "response": "⚠️ Proxy is dead and has been removed! Please add a new proxy using /addpxy", "site": site, "price": "-"}
                 
                 if is_site_dead(response_msg): 
                     return {"status": "dead", "response": response_msg, "site": site, "price": price}
@@ -1017,10 +1023,11 @@ async def check_card_razorpay(card, amount="1", user_id=None):
         # Check if exception was returned
         if isinstance(res, Exception):
             error_str = str(res)
-            if 'proxy' in error_str.lower() and user_id:
-                if proxy_data:
+            if 'proxy' in error_str.lower() and user_id and proxy_data:
+                proxy_alive, _ = await test_proxy(proxy_data.get('proxy_url'))
+                if not proxy_alive:
                     await remove_dead_proxy(user_id, proxy_data.get('proxy_url'))
-                return {"Response": "⚠️ Proxy is dead and has been removed! Please add a new proxy using /addpxy", "Price": "-", "Gateway": f"Razorpay ₹{amount}", "Status": "Proxy Dead"}
+                    return {"Response": "⚠️ Proxy is dead and has been removed! Please add a new proxy using /addpxy", "Price": "-", "Gateway": f"Razorpay ₹{amount}", "Status": "Proxy Dead"}
             return {"Response": "Connection Error", "Price": "-", "Gateway": f"Razorpay ₹{amount}"}
 
         if res.status_code != 200:
