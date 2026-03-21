@@ -4638,6 +4638,252 @@
   background: rgba(0, 105, 92, 0.2) !important;
 }
 
+/* Proxy Modal Styles */
+#proxyModal .cc-modal-content {
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  max-width: 360px;
+}
+
+.proxy-modal-header {
+  background: linear-gradient(135deg, #667eea, #764ba2) !important;
+  padding: 16px 20px !important;
+  border-bottom: none !important;
+}
+
+#proxyModal .cc-modal-header span {
+  color: white !important;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+#proxyModal .cc-modal-close {
+  background: rgba(255,255,255,0.2) !important;
+  border: none !important;
+  color: white !important;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+#proxyModal .cc-modal-close:hover {
+  background: rgba(255,255,255,0.3) !important;
+  transform: scale(1.1);
+}
+
+#proxyModal .cc-modal-body {
+  padding: 20px 18px;
+}
+
+.proxy-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.proxy-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.proxy-form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #667eea;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.proxy-hint {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.proxy-mode-toggle {
+  display: flex;
+  gap: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid #e2e8f0;
+  background: #f1f5f9;
+}
+
+.proxy-mode-btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.proxy-mode-btn.active {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.proxy-mode-btn:hover:not(.active) {
+  background: #e2e8f0;
+}
+
+.proxy-textarea {
+  width: 100%;
+  min-height: 120px;
+  max-height: 200px;
+  padding: 12px 14px;
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 11px;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  color: #1e293b;
+  resize: vertical;
+  outline: none;
+  transition: all 0.2s;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+
+.proxy-textarea:focus {
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.proxy-textarea::placeholder {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.proxy-count-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.proxy-count {
+  font-size: 10px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.proxy-clear-btn {
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 500;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  background: #fff5f5;
+  color: #dc2626;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.proxy-clear-btn:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+
+.proxy-status {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  margin-top: 4px;
+  transition: all 0.3s ease;
+}
+
+.proxy-status.success {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  color: #047857;
+  border: 1px solid #6ee7b7;
+}
+
+.proxy-status.error {
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.proxy-status.pending {
+  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+  color: #6d28d9;
+  border: 1px solid #a78bfa;
+  animation: pulse 1.5s infinite;
+}
+
+.proxy-info-box {
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  border: 1px solid #7dd3fc;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-top: 4px;
+}
+
+.proxy-info-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0369a1;
+  margin-bottom: 8px;
+}
+
+.proxy-info-item {
+  font-size: 11px;
+  color: #334155;
+  padding: 3px 0;
+  display: flex;
+  gap: 6px;
+}
+
+.proxy-info-item span {
+  min-width: 80px;
+  color: #64748b;
+}
+
+.proxy-info-item strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.proxy-modal-footer {
+  padding: 14px 18px 18px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.proxy-modal-footer .test-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.proxy-modal-footer .test-btn:hover {
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+.proxy-modal-footer .test-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.proxy-status.hidden,
+.proxy-info-box.hidden {
+  display: none;
+}
+
 /* CC Modal - Same Style as TG Modal */
 #ccModal .cc-modal-content {
   background: linear-gradient(145deg, #ffffff, #f8fafc) !important;

@@ -18,6 +18,11 @@ const K = {
   MUSIC_NAME:         'xorex_music_name',
   MUSIC_DATA:         'xorex_music_data',
   CARD_HISTORY:       'xorex_card_history',
+  PROXY_ENABLED:      'xorex_proxy_enabled',
+  PROXY_STRING:       'xorex_proxy_string',
+  PROXY_INFO:         'xorex_proxy_info',
+  PROXY_LIST:         'xorex_proxy_list',
+  PROXY_MODE:         'xorex_proxy_mode',
 };
 
 const _pendingWrites = new Set();

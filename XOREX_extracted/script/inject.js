@@ -1217,6 +1217,10 @@ if (window.__XOREXBlocked) {
   let tgForwardEnabled = localStorage.getItem('xorex_tg_forward_enabled') === 'true'
   let tgBotToken = localStorage.getItem('xorex_tg_bot_token') || ""
   let tgUserId = localStorage.getItem('xorex_tg_user_id') || ""
+  let proxyEnabled = localStorage.getItem('xorex_proxy_enabled') === 'true'
+  let proxyList = JSON.parse(localStorage.getItem('xorex_proxy_list') || '[]')
+  let proxyMode = localStorage.getItem('xorex_proxy_mode') || 'rotating'
+  let currentProxyIndex = 0
   let cardFieldsDetected = false
   const notiSoundEnabled = true
   let soundVolume = 1.0
@@ -4425,6 +4429,11 @@ if (window.__XOREXBlocked) {
     <span class="setting-label">TG Forward</span>
     <button class="proxy-view-btn-small" id="tgSettingsBtn">${(tgBotToken && tgUserId) ? "View" : "Set"}</button>
   </div>
+  <div class="setting-row">
+    <span class="setting-icon">🌐</span>
+    <span class="setting-label">Proxy</span>
+    <button class="proxy-view-btn-small" id="proxySettingsBtn">${proxyList.length > 0 ? "View" : "Set"}</button>
+  </div>
   <div class="setting-box" id="bgColorBox">
     <div class="setting-row no-border">
       <span class="setting-icon">🎨</span>
@@ -4532,6 +4541,48 @@ if (window.__XOREXBlocked) {
     </div>
   `
 
+    const proxyModal = document.createElement("div")
+    proxyModal.className = "cc-modal hidden"
+    proxyModal.id = "proxyModal"
+    proxyModal.innerHTML = `
+    <div class="cc-modal-content">
+      <div class="cc-modal-header proxy-modal-header">
+        <span>🌐 Proxy Settings</span>
+        <button class="cc-modal-close" id="closeProxyModal">✕</button>
+      </div>
+      <div class="cc-modal-body">
+        <div class="proxy-form">
+          <div class="proxy-form-row">
+            <label class="proxy-form-label">🔄 Mode</label>
+            <div class="proxy-mode-toggle">
+              <button class="proxy-mode-btn ${proxyMode === 'rotating' ? 'active' : ''}" data-mode="rotating">Rotating</button>
+              <button class="proxy-mode-btn ${proxyMode === 'sticky' ? 'active' : ''}" data-mode="sticky">Sticky</button>
+            </div>
+            <div class="proxy-hint">Rotating = new IP each request · Sticky = same IP per session</div>
+          </div>
+          <div class="proxy-form-row">
+            <label class="proxy-form-label">📡 Proxy List</label>
+            <textarea id="proxyTextarea" class="proxy-textarea" placeholder="Add proxies (one per line)&#10;&#10;Formats supported:&#10;host:port:user:pass&#10;user:pass@host:port&#10;host:port&#10;&#10;Example:&#10;gate.residential.com:7777:user123:pass456&#10;user:pass@proxy.example.com:8080">${proxyList.join('\\n')}</textarea>
+            <div class="proxy-count-row">
+              <span class="proxy-count" id="proxyCount">${proxyList.length} proxies loaded</span>
+              <button class="proxy-clear-btn" id="proxyClearBtn">🗑 Clear</button>
+            </div>
+          </div>
+          <div class="proxy-status hidden" id="proxyTestStatus"></div>
+          <div class="proxy-info-box hidden" id="proxyInfoBox">
+            <div class="proxy-info-title">📊 Last Test Result</div>
+            <div class="proxy-info-details" id="proxyInfoDetails"></div>
+          </div>
+        </div>
+      </div>
+      <div class="cc-modal-footer proxy-modal-footer">
+        <button class="action-btn test-btn" id="proxyTestBtn">🔍 Test</button>
+        <button class="action-btn primary-btn" id="proxySaveBtn">💾 Save</button>
+      </div>
+    </div>
+  `
+
+    document.body.appendChild(proxyModal)
     document.body.appendChild(tgModal)
     document.body.appendChild(bgInfoModal)
     document.body.appendChild(ccModal)
@@ -4910,6 +4961,238 @@ if (window.__XOREXBlocked) {
 
       setTimeout(() => {
         const modal = document.getElementById("tgModal")
+        if (modal) {
+          modal.classList.remove("show")
+          modal.classList.add("hidden")
+        }
+        autoRestoreAfterModal()
+      }, 1000)
+    })
+  }
+
+  const proxySettingsBtn = document.getElementById("proxySettingsBtn")
+  if (proxySettingsBtn) {
+    proxySettingsBtn.addEventListener("click", function(e) {
+      e.preventDefault()
+      e.stopPropagation()
+      autoMinimizeForModal()
+
+      const modal = document.getElementById("proxyModal")
+      if (modal) {
+        const textarea = document.getElementById("proxyTextarea")
+        if (textarea) textarea.value = proxyList.join('\n')
+        updateProxyCount()
+
+        const status = document.getElementById("proxyTestStatus")
+        if (status) status.classList.add("hidden")
+        const infoBox = document.getElementById("proxyInfoBox")
+        if (infoBox) infoBox.classList.add("hidden")
+
+        modal.classList.remove("hidden")
+        modal.classList.add("show")
+      }
+    })
+  }
+
+  const closeProxyModal = document.getElementById("closeProxyModal")
+  if (closeProxyModal) {
+    closeProxyModal.addEventListener("click", function() {
+      const modal = document.getElementById("proxyModal")
+      if (modal) {
+        modal.classList.remove("show")
+        modal.classList.add("hidden")
+      }
+      autoRestoreAfterModal()
+    })
+  }
+
+  const proxyModeButtons = document.querySelectorAll(".proxy-mode-btn")
+  proxyModeButtons.forEach(btn => {
+    btn.addEventListener("click", function() {
+      proxyModeButtons.forEach(b => b.classList.remove("active"))
+      this.classList.add("active")
+      proxyMode = this.dataset.mode
+    })
+  })
+
+  const proxyClearBtn = document.getElementById("proxyClearBtn")
+  if (proxyClearBtn) {
+    proxyClearBtn.addEventListener("click", function() {
+      const textarea = document.getElementById("proxyTextarea")
+      if (textarea) textarea.value = ""
+      updateProxyCount()
+    })
+  }
+
+  function parseProxyList() {
+    const textarea = document.getElementById("proxyTextarea")
+    if (!textarea) return []
+    return textarea.value.trim().split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+  }
+
+  function updateProxyCount() {
+    const proxies = parseProxyList()
+    const countEl = document.getElementById("proxyCount")
+    if (countEl) countEl.textContent = proxies.length + " prox" + (proxies.length === 1 ? "y" : "ies") + " loaded"
+  }
+
+  const proxyTextarea = document.getElementById("proxyTextarea")
+  if (proxyTextarea) {
+    proxyTextarea.addEventListener("input", updateProxyCount)
+  }
+
+  function parseProxyString(proxyStr) {
+    proxyStr = proxyStr.trim()
+    let host, port, user, pass
+
+    if (proxyStr.includes('@')) {
+      const [credentials, hostPort] = proxyStr.split('@')
+      const credParts = credentials.split(':')
+      user = credParts[0]
+      pass = credParts.slice(1).join(':')
+      const hpParts = hostPort.split(':')
+      host = hpParts[0]
+      port = hpParts[1]
+    } else {
+      const parts = proxyStr.split(':')
+      if (parts.length === 4) {
+        host = parts[0]
+        port = parts[1]
+        user = parts[2]
+        pass = parts[3]
+      } else if (parts.length === 2) {
+        host = parts[0]
+        port = parts[1]
+      } else {
+        return null
+      }
+    }
+
+    if (!host || !port) return null
+    return { host, port, user: user || null, pass: pass || null }
+  }
+
+  const proxyTestBtn = document.getElementById("proxyTestBtn")
+  if (proxyTestBtn) {
+    proxyTestBtn.addEventListener("click", async function() {
+      const proxies = parseProxyList()
+      const status = document.getElementById("proxyTestStatus")
+      const infoBox = document.getElementById("proxyInfoBox")
+      const infoDetails = document.getElementById("proxyInfoDetails")
+
+      if (proxies.length === 0) {
+        if (status) {
+          status.textContent = "❌ Please add at least one proxy"
+          status.className = "proxy-status error"
+          status.classList.remove("hidden")
+        }
+        return
+      }
+
+      const testProxy = proxies[0]
+      const parsed = parseProxyString(testProxy)
+      if (!parsed) {
+        if (status) {
+          status.textContent = "❌ Invalid proxy format: " + testProxy
+          status.className = "proxy-status error"
+          status.classList.remove("hidden")
+        }
+        return
+      }
+
+      proxyTestBtn.disabled = true
+      proxyTestBtn.textContent = "⏳ Testing..."
+
+      if (status) {
+        status.textContent = "🔄 Testing proxy connection..."
+        status.className = "proxy-status pending"
+        status.classList.remove("hidden")
+      }
+
+      try {
+        const result = await sendToBackground({
+          type: "TEST_PROXY",
+          proxy: parsed
+        })
+
+        if (result && result.success) {
+          if (status) {
+            status.textContent = "✅ Proxy is working!"
+            status.className = "proxy-status success"
+          }
+          if (infoBox && infoDetails) {
+            const info = result.info || {}
+            infoDetails.innerHTML = `
+              <div class="proxy-info-item"><span>🌍 IP:</span> <strong>${info.ip || 'Unknown'}</strong></div>
+              <div class="proxy-info-item"><span>📍 Location:</span> <strong>${info.country || '?'}${info.city ? ', ' + info.city : ''}</strong></div>
+              <div class="proxy-info-item"><span>🏢 ISP:</span> <strong>${info.org || 'Unknown'}</strong></div>
+              <div class="proxy-info-item"><span>⏱ Latency:</span> <strong>${info.latency || '?'}ms</strong></div>
+            `
+            infoBox.classList.remove("hidden")
+          }
+          showWarning("✅ Proxy working!", "success")
+        } else {
+          if (status) {
+            status.textContent = "❌ " + (result?.error || "Proxy connection failed")
+            status.className = "proxy-status error"
+          }
+          if (infoBox) infoBox.classList.add("hidden")
+        }
+      } catch (err) {
+        if (status) {
+          status.textContent = "❌ Test failed: " + (err.message || "Unknown error")
+          status.className = "proxy-status error"
+        }
+      }
+
+      proxyTestBtn.disabled = false
+      proxyTestBtn.textContent = "🔍 Test"
+    })
+  }
+
+  const proxySaveBtn = document.getElementById("proxySaveBtn")
+  if (proxySaveBtn) {
+    proxySaveBtn.addEventListener("click", function() {
+      const proxies = parseProxyList()
+      const status = document.getElementById("proxyTestStatus")
+
+      proxyList = proxies
+      proxyMode = document.querySelector(".proxy-mode-btn.active")?.dataset.mode || 'rotating'
+      proxyEnabled = proxies.length > 0
+      currentProxyIndex = 0
+
+      localStorage.setItem('xorex_proxy_list', JSON.stringify(proxyList))
+      localStorage.setItem('xorex_proxy_mode', proxyMode)
+      localStorage.setItem('xorex_proxy_enabled', proxyEnabled.toString())
+
+      window.postMessage({
+        type: 'XOREX_STORAGE_REQUEST',
+        requestId: 'proxy_save_' + Date.now(),
+        action: 'SET',
+        data: {
+          'xorex_proxy_list': proxyList,
+          'xorex_proxy_mode': proxyMode,
+          'xorex_proxy_enabled': proxyEnabled
+        }
+      }, '*')
+
+      const settingsBtn = document.getElementById("proxySettingsBtn")
+      if (settingsBtn) {
+        settingsBtn.textContent = proxyList.length > 0 ? "View" : "Set"
+      }
+
+      if (status) {
+        status.textContent = "💾 " + proxyList.length + " prox" + (proxyList.length === 1 ? "y" : "ies") + " saved!"
+        status.className = "proxy-status success"
+        status.classList.remove("hidden")
+      }
+
+      showWarning("💾 Proxy settings saved!", "success")
+
+      setTimeout(() => {
+        const modal = document.getElementById("proxyModal")
         if (modal) {
           modal.classList.remove("show")
           modal.classList.add("hidden")
@@ -5393,11 +5676,11 @@ if (window.__XOREXBlocked) {
     watermark.className = "xorex-page-watermark"
     watermark.innerHTML = `
     <div class="xorex-wm-line"></div>
-    <span>U</span>
-    <span>S</span>
-    <span>A</span>
-    <span>G</span>
-    <span>I</span>
+    <span>X</span>
+    <span>O</span>
+    <span>R</span>
+    <span>E</span>
+    <span>X</span>
     <div class="xorex-wm-line"></div>
   `
     document.body.appendChild(watermark)

@@ -252,5 +252,74 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true;
   }
+  if (message.type === "TEST_PROXY") {
+    (async () => {
+      try {
+        const proxy = message.proxy;
+        const startTime = Date.now();
+
+        let proxyUrl;
+        if (proxy.user && proxy.pass) {
+          proxyUrl = `http://${proxy.user}:${proxy.pass}@${proxy.host}:${proxy.port}`;
+        } else {
+          proxyUrl = `http://${proxy.host}:${proxy.port}`;
+        }
+
+        const testUrl = "https://ipinfo.io/json";
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        const response = await fetch(testUrl, {
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        clearTimeout(timeoutId);
+
+        const latency = Date.now() - startTime;
+
+        if (!response.ok) {
+          sendResponse({ success: false, error: "HTTP " + response.status });
+          return;
+        }
+
+        const data = await response.json();
+
+        const proxyTestUrl = `https://api.ipify.org?format=json`;
+        let proxyIp = data.ip;
+
+        try {
+          const ipResp = await fetch(proxyTestUrl, {
+            headers: { 'Accept': 'application/json' }
+          });
+          if (ipResp.ok) {
+            const ipData = await ipResp.json();
+            if (ipData.ip) proxyIp = ipData.ip;
+          }
+        } catch (e) {}
+
+        sendResponse({
+          success: true,
+          info: {
+            ip: proxyIp || data.ip || "Unknown",
+            country: data.country || "Unknown",
+            city: data.city || "",
+            region: data.region || "",
+            org: data.org || "Unknown",
+            latency: latency
+          }
+        });
+      } catch (e) {
+        if (e.name === 'AbortError') {
+          sendResponse({ success: false, error: "Connection timed out (15s)" });
+        } else {
+          sendResponse({ success: false, error: e.message || "Connection failed" });
+        }
+      }
+    })();
+    return true;
+  }
   return false;
 });
